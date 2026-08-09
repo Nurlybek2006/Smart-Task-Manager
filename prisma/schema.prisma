@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  createdTasks Task[] @relation("CreatorTasks")
+  assignedTasks Task[] @relation("AssignedTasks")
+  comments Comment[]
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  status      Status   @default(TODO)
+  priority    Priority @default(MEDIUM)
+  dueDate     DateTime?
+  estimatedHours Int?
+  actualHours   Int?
+
+  creatorId   String
+  creator     User     @relation("CreatorTasks", fields: [creatorId], references: [id])
+  
+  assigneeId  String?
+  assignee    User?    @relation("AssignedTasks", fields: [assigneeId], references: [id])
+
+  parentId    String?
+  parent      Task?    @relation("TaskDependencies", fields: [parentId], references: [id])
+  subtasks    Task[]   @relation("TaskDependencies")
+
+  comments    Comment[]
+  tags        String[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Comment {
+  id      String   @id @default(uuid())
+  content String
+  taskId  String
+  task    Task     @relation(fields: [taskId], references: [id])
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+enum Status {
+  TODO
+  IN_PROGRESS
+  REVIEW
+  DONE
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum Role {
+  USER
+  MANAGER
+  ADMIN
+}
