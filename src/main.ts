@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import authRoutes from './modules/auth/auth.routes';
+import taskRoutes from './modules/tasks/task.routes';
 
 
 dotenv.config();
@@ -18,7 +19,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 app.use('/api/auth', authRoutes);
-
+app.use('/api/tasks', taskRoutes);
 
 // 🏠 Қарапайым тест-эндпоинт
 app.get('/health', (_req, res) => {
