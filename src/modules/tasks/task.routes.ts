@@ -36,4 +36,10 @@ router.delete(
   taskController.delete.bind(taskController)
 );
 
+router.patch(
+  '/:id/assign',
+  authMiddleware,
+  taskController.assign.bind(taskController)
+);
+
 export default router;

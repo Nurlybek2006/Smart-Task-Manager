@@ -47,9 +47,30 @@ export class TaskController {
                 });
             }
 
-            const tasks = await taskService.getTasks(req.user.userId);
+            const { status, dueDate, page, limit } = req.query;
 
-            return res.status(200).json(tasks);
+            const parsedPage =
+                typeof page === 'string' ? parseInt(page) : 1;
+
+            const parsedLimit =
+                typeof limit === 'string' ? parseInt(limit) : 10;
+
+            const result = await taskService.getTasks(
+                req.user.userId,
+
+                typeof status === 'string'
+                    ? status as 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE'
+                    : undefined,
+
+                typeof dueDate === 'string'
+                    ? dueDate as 'today' | 'overdue'
+                    : undefined,
+
+                parsedPage,
+                parsedLimit
+            );
+
+            return res.status(200).json(result);
         } catch (error: any) {
             return res.status(500).json({
                 error: error.message,
@@ -154,6 +175,44 @@ export class TaskController {
             return res.status(200).json(result);
         } catch (error: any) {
             return res.status(404).json({
+                error: error.message,
+            });
+        }
+    }
+
+
+    async assign(req: AuthRequest, res: Response) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    error: 'Unauthorized',
+                });
+            }
+
+            const { id } = req.params;
+            const { assigneeId } = req.body;
+
+            if (typeof id !== 'string') {
+                return res.status(400).json({
+                    error: 'Invalid task ID',
+                });
+            }
+
+            if (!assigneeId || typeof assigneeId !== 'string') {
+                return res.status(400).json({
+                    error: 'assigneeId is required',
+                });
+            }
+
+            const task = await taskService.assignTask(
+                req.user.userId,
+                id,
+                assigneeId
+            );
+
+            return res.status(200).json(task);
+        } catch (error: any) {
+            return res.status(400).json({
                 error: error.message,
             });
         }

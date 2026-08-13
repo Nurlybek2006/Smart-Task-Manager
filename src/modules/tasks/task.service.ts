@@ -24,24 +24,132 @@ export class TaskService {
         return task;
     }
 
-    async getTasks(userId: string) {
+    async getTasks(
+        userId: string,
+        status?: 'TODO' | 'IN_PROGRESS' | 'REVIEW' | 'DONE',
+        dueDate?: 'today' | 'overdue',
+        page: number = 1,
+        limit: number = 10
+    ) {
+        const now = new Date();
+
+        const startOfToday = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate()
+        );
+
+        const endOfToday = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1
+        );
+
+        const where: any = {
+            OR: [
+                {
+                    creatorId: userId,
+                },
+                {
+                    assigneeId: userId,
+                },
+            ],
+        };
+
+        if (status) {
+            where.status = status;
+        }
+
+        if (dueDate === 'today') {
+            where.dueDate = {
+                gte: startOfToday,
+                lt: endOfToday,
+            };
+        }
+
+        if (dueDate === 'overdue') {
+            where.dueDate = {
+                lt: now,
+            };
+        }
+
+        const skip = (page - 1) * limit;
+
         const tasks = await prisma.task.findMany({
-            where: {
-                creatorId: userId,
+            where,
+
+            include: {
+                creator: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
             },
+
             orderBy: {
                 createdAt: 'desc',
             },
+
+            skip,
+            take: limit,
         });
 
-        return tasks;
+        const total = await prisma.task.count({
+            where,
+        });
+
+        return {
+            tasks,
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+            },
+        };
     }
 
     async getTaskById(userId: string, taskId: string) {
         const task = await prisma.task.findFirst({
             where: {
                 id: taskId,
-                creatorId: userId,
+
+                OR: [
+                    {
+                        creatorId: userId,
+                    },
+                    {
+                        assigneeId: userId,
+                    },
+                ],
+            },
+
+            include: {
+                creator: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
             },
         });
 
@@ -116,5 +224,56 @@ export class TaskService {
         return {
             message: 'Task deleted successfully',
         };
+    }
+
+
+    async assignTask(
+        userId: string,
+        taskId: string,
+        assigneeId: string
+    ) {
+        // 1. Task бар ма және оны қазіргі User құрған ба?
+        const task = await prisma.task.findFirst({
+            where: {
+                id: taskId,
+                creatorId: userId,
+            },
+        });
+
+        if (!task) {
+            throw new Error('Task not found');
+        }
+
+        // 2. Тағайындалатын User бар ма?
+        const assignee = await prisma.user.findUnique({
+            where: {
+                id: assigneeId,
+            },
+        });
+
+        if (!assignee) {
+            throw new Error('Assignee not found');
+        }
+
+        // 3. Task-ты User-ге тағайындау
+        const updatedTask = await prisma.task.update({
+            where: {
+                id: taskId,
+            },
+            data: {
+                assigneeId: assigneeId,
+            },
+            include: {
+                assignee: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                    },
+                },
+            },
+        });
+
+        return updatedTask;
     }
 }
