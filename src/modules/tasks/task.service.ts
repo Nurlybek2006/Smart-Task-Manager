@@ -1,4 +1,8 @@
 import prisma from '../../database/prisma';
+import {
+    scheduleTaskReminder,
+    removeTaskReminder,
+} from '../../queues/reminder.service';
 
 interface CreateTaskData {
     title: string;
@@ -14,12 +18,22 @@ export class TaskService {
                 title: data.title,
                 description: data.description,
                 priority: data.priority,
-                dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+                dueDate: data.dueDate
+                    ? new Date(data.dueDate)
+                    : undefined,
 
-                // JWT арқылы келген пайдаланушы
                 creatorId: userId,
             },
         });
+
+        if (task.dueDate) {
+            await scheduleTaskReminder(
+                task.id,
+                task.title,
+                userId,
+                task.dueDate
+            );
+        }
 
         return task;
     }
@@ -200,6 +214,17 @@ export class TaskService {
             },
         });
 
+        if (task.dueDate) {
+            await scheduleTaskReminder(
+                task.id,
+                task.title,
+                userId,
+                task.dueDate
+            );
+        } else {
+            await removeTaskReminder(task.id);
+        }
+
         return task;
     }
 
@@ -214,6 +239,8 @@ export class TaskService {
         if (!existingTask) {
             throw new Error('Task not found');
         }
+
+        await removeTaskReminder(taskId);
 
         await prisma.task.delete({
             where: {
