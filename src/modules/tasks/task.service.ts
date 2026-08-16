@@ -3,6 +3,7 @@ import {
     scheduleTaskReminder,
     removeTaskReminder,
 } from '../../queues/reminder.service';
+import { getIO } from '../../config/socket';
 
 interface CreateTaskData {
     title: string;
@@ -26,14 +27,24 @@ export class TaskService {
             },
         });
 
-        if (task.dueDate) {
+        if (task.status === 'DONE') {
+            await removeTaskReminder(task.id);
+        } else if (task.dueDate) {
             await scheduleTaskReminder(
                 task.id,
                 task.title,
                 userId,
                 task.dueDate
             );
+        } else {
+            await removeTaskReminder(task.id);
         }
+        const io = getIO();
+
+        io.to(`user:${userId}`).emit(
+            'task:created',
+            task
+        );
 
         return task;
     }
@@ -224,6 +235,12 @@ export class TaskService {
         } else {
             await removeTaskReminder(task.id);
         }
+        const io = getIO();
+
+        io.to(`user:${userId}`).emit(
+            'task:updated',
+            task
+        );
 
         return task;
     }
@@ -247,6 +264,15 @@ export class TaskService {
                 id: taskId,
             },
         });
+
+        const io = getIO();
+
+        io.to(`user:${userId}`).emit(
+            'task:deleted',
+            {
+                taskId,
+            }
+        );
 
         return {
             message: 'Task deleted successfully',
@@ -301,6 +327,21 @@ export class TaskService {
             },
         });
 
+        const io = getIO();
+
+        io.to(`user:${userId}`).emit(
+            'task:assigned',
+            updatedTask
+        );
+
+        io.to(`user:${assigneeId}`).emit(
+            'task:assigned',
+            updatedTask
+        );
+
+
+
         return updatedTask;
+
     }
 }

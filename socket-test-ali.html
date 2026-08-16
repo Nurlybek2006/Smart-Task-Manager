@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Socket.io Test</title>
+</head>
+
+<body>
+  <h1>Socket.io Test</h1>
+
+  <p id="status">Connecting...</p>
+
+  <script src="http://localhost:3000/socket.io/socket.io.js"></script>
+
+  <script>
+    const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI5NmMzY2ZhZS0zMjdkLTRmYTMtOGRjMy01YThjZTgzZWQ4NWMiLCJlbWFpbCI6ImFsaTJAdGVzdC5jb20iLCJyb2xlIjoiVVNFUiIsImlhdCI6MTc4Njg4MTU5MywiZXhwIjoxNzg3NDg2MzkzfQ.cXwLE8W7bOacl61ui5OM-FDxMJcitQk1kQlactpQnv4';
+
+    const socket = io('http://localhost:3000', {
+      auth: {
+        token: token
+      }
+    });
+
+    socket.on('connect', () => {
+      document.getElementById('status').innerText =
+        'Connected: ' + socket.id;
+    });
+
+    socket.on('connect_error', (error) => {
+      document.getElementById('status').innerText =
+        'Connection error: ' + error.message;
+
+      console.error(error.message);
+    });
+
+    socket.on('task:created', (task) => {
+      const item = document.createElement('p');
+      item.innerText = '✅ Created: ' + task.title;
+      document.body.appendChild(item);
+    });
+
+    socket.on('task:updated', (task) => {
+      const item = document.createElement('p');
+      item.innerText =
+        '✏️ Updated: ' + task.title + ' [' + task.status + ']';
+
+      document.body.appendChild(item);
+    });
+
+    socket.on('task:deleted', (data) => {
+      const item = document.createElement('p');
+      item.innerText =
+        '🗑️ Deleted Task ID: ' + data.taskId;
+
+      document.body.appendChild(item);
+    });
+
+    socket.on('task:assigned', (task) => {
+      const item = document.createElement('p');
+
+      item.innerText =
+        '👤 Assigned: ' +
+        task.title +
+        ' → ' +
+        (task.assignee?.name || task.assigneeId);
+
+      document.body.appendChild(item);
+    });
+
+    socket.on('notification:reminder', (data) => {
+      const item = document.createElement('h3');
+
+      item.innerText =
+        '🔔 REMINDER: ' + data.title;
+
+      document.body.appendChild(item);
+    });
+  </script>
+</body>
+</html>

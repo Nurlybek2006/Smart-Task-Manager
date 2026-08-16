@@ -1,6 +1,7 @@
 import { Worker } from 'bullmq';
 import redisConnection from '../config/redis';
 import prisma from '../database/prisma';
+import { getIO } from '../config/socket';
 
 export const reminderWorker = new Worker(
   'task-reminders',
@@ -11,6 +12,17 @@ export const reminderWorker = new Worker(
       console.log('Task ID:', job.data.taskId);
       console.log('Title:', job.data.title);
       console.log('User ID:', job.data.userId);
+
+      const io = getIO();
+
+      io.to(`user:${job.data.userId}`).emit(
+        'notification:reminder',
+        {
+          taskId: job.data.taskId,
+          title: job.data.title,
+          message: `Task "${job.data.title}" мерзімі келді`,
+        }
+      );
 
       return;
     }

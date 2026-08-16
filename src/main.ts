@@ -4,12 +4,14 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { createServer } from 'http';
 
 import authRoutes from './modules/auth/auth.routes';
 import taskRoutes from './modules/tasks/task.routes';
 import './queues/reminder.worker';
 import { reminderQueue } from './queues/reminder.queue';
 import { setupOverdueScheduler } from './queues/overdue.scheduler';
+import { initializeSocket } from './config/socket';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -60,14 +62,16 @@ app.use((err: any, _req: any, res: any, _next: any) => {
   });
 });
 
+const httpServer = createServer(app);
+
+initializeSocket(httpServer);
+
+
 // Серверді іске қосу — ең соңында
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📊 Health check: http://localhost:${PORT}/health`);
+  console.log(`⚡ Socket.io ready`);
 });
 
 setupOverdueScheduler().catch(console.error);
-
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
