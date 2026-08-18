@@ -217,4 +217,196 @@ export class TaskController {
             });
         }
     }
+
+    async exportExcel(req: AuthRequest, res: Response) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    error: 'Unauthorized',
+                });
+            }
+
+            const buffer = await taskService.exportTasks(
+                req.user.userId
+            );
+
+            res.setHeader(
+                'Content-Type',
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            );
+
+            res.setHeader(
+                'Content-Disposition',
+                'attachment; filename="tasks.xlsx"'
+            );
+
+            return res.send(Buffer.from(buffer));
+        } catch (error: any) {
+            return res.status(500).json({
+                error: error.message,
+            });
+        }
+    }
+
+    async importExcel(req: AuthRequest, res: Response) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    error: 'Unauthorized',
+                });
+            }
+
+            if (!req.file) {
+                return res.status(400).json({
+                    error: 'Excel file is required',
+                });
+            }
+
+            const result = await taskService.importTasks(
+                req.user.userId,
+                req.file.buffer
+            );
+
+            return res.status(201).json(result);
+        } catch (error: any) {
+            return res.status(500).json({
+                error: error.message,
+            });
+        }
+    }
+
+    async getAnalytics(req: AuthRequest, res: Response) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    error: 'Unauthorized',
+                });
+            }
+
+            const analytics = await taskService.getAnalytics(
+                req.user.userId
+            );
+
+            return res.status(200).json(analytics);
+        } catch (error: any) {
+            return res.status(500).json({
+                error: error.message,
+            });
+        }
+    }
+
+    async addDependency(
+        req: AuthRequest,
+        res: Response
+    ) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    error: 'Unauthorized',
+                });
+            }
+
+            const { id } = req.params;
+            const { blockingTaskId } = req.body;
+
+            if (typeof id !== 'string') {
+                return res.status(400).json({
+                    error: 'Invalid task ID',
+                });
+            }
+
+            if (
+                !blockingTaskId ||
+                typeof blockingTaskId !== 'string'
+            ) {
+                return res.status(400).json({
+                    error: 'blockingTaskId is required',
+                });
+            }
+
+            const dependency =
+                await taskService.addDependency(
+                    req.user.userId,
+                    id,
+                    blockingTaskId
+                );
+
+            return res.status(201).json(
+                dependency
+            );
+        } catch (error: any) {
+            return res.status(400).json({
+                error: error.message,
+            });
+        }
+    }
+
+    async getDependencies(
+        req: AuthRequest,
+        res: Response
+    ) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    error: 'Unauthorized',
+                });
+            }
+
+            const { id } = req.params;
+
+            if (typeof id !== 'string') {
+                return res.status(400).json({
+                    error: 'Invalid task ID',
+                });
+            }
+
+            const dependencies =
+                await taskService.getDependencies(
+                    req.user.userId,
+                    id
+                );
+
+            return res.status(200).json(dependencies);
+        } catch (error: any) {
+            return res.status(404).json({
+                error: error.message,
+            });
+        }
+    }
+
+    async removeDependency(
+        req: AuthRequest,
+        res: Response
+    ) {
+        try {
+            if (!req.user) {
+                return res.status(401).json({
+                    error: 'Unauthorized',
+                });
+            }
+
+            const { id, dependencyId } = req.params;
+
+            if (
+                typeof id !== 'string' ||
+                typeof dependencyId !== 'string'
+            ) {
+                return res.status(400).json({
+                    error: 'Invalid ID',
+                });
+            }
+
+            const result = await taskService.removeDependency(
+                req.user.userId,
+                id,
+                dependencyId
+            );
+
+            return res.status(200).json(result);
+        } catch (error: any) {
+            return res.status(404).json({
+                error: error.message,
+            });
+        }
+    }
 }

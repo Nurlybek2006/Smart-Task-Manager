@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import redisConnection from '../config/redis';
 import prisma from '../database/prisma';
 import { getIO } from '../config/socket';
+import { calculatePriority } from '../utils/priority.util';
 
 export const reminderWorker = new Worker(
   'task-reminders',
@@ -56,6 +57,65 @@ export const reminderWorker = new Worker(
 
       return;
     }
+
+    if (job.name === 'recalculate-priorities') {
+      console.log('🧠 Recalculating task priorities...');
+
+      const tasks = await prisma.task.findMany({
+        where: {
+          status: {
+            not: 'DONE',
+          },
+        },
+      });
+
+      let changedCount = 0;
+
+      for (const task of tasks) {
+        const newPriority = calculatePriority(task.dueDate);
+
+        if (newPriority !== task.priority) {
+          const updatedTask = await prisma.task.update({
+            where: {
+              id: task.id,
+            },
+            data: {
+              priority: newPriority,
+            },
+          });
+
+          changedCount++;
+
+          const io = getIO();
+
+          io.to(`user:${task.creatorId}`).emit(
+            'task:priorityChanged',
+            updatedTask
+          );
+
+          if (
+            task.assigneeId &&
+            task.assigneeId !== task.creatorId
+          ) {
+            io.to(`user:${task.assigneeId}`).emit(
+              'task:priorityChanged',
+              updatedTask
+            );
+          }
+
+          console.log(
+            `📌 ${task.title}: ${task.priority} → ${newPriority}`
+          );
+        }
+      }
+
+      console.log(
+        `✅ Priority recalculation finished. Changed: ${changedCount}`
+      );
+
+      return;
+    }
+
   },
 
   {

@@ -12,6 +12,9 @@ import './queues/reminder.worker';
 import { reminderQueue } from './queues/reminder.queue';
 import { setupOverdueScheduler } from './queues/overdue.scheduler';
 import { initializeSocket } from './config/socket';
+import { setupPriorityScheduler } from './queues/priority.scheduler';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './config/swagger';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,6 +26,12 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
+
+app.use(
+  '/api-docs',
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec)
+);
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 
@@ -75,3 +84,4 @@ httpServer.listen(PORT, () => {
 });
 
 setupOverdueScheduler().catch(console.error);
+setupPriorityScheduler().catch(console.error);
