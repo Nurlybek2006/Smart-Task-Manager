@@ -2,7 +2,6 @@ services:
   postgres:
     image: postgres:17
     container_name: taskmanager-postgres
-    restart: unless-stopped
 
     environment:
       POSTGRES_USER: admin
@@ -15,10 +14,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+    restart: unless-stopped
+
+
   redis:
     image: redis:7
     container_name: taskmanager-redis
-    restart: unless-stopped
 
     ports:
       - "6379:6379"
@@ -26,10 +27,12 @@ services:
     volumes:
       - redis_data:/data
 
+    restart: unless-stopped
+
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: taskmanager-pgadmin
-    restart: unless-stopped
 
     environment:
       PGADMIN_DEFAULT_EMAIL: admin@admin.com
@@ -40,6 +43,41 @@ services:
 
     depends_on:
       - postgres
+
+    restart: unless-stopped
+
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: taskmanager-app
+
+    ports:
+      - "3000:3000"
+
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+
+      DATABASE_URL: "postgresql://admin:Nurlybek060705%2F@postgres:5432/taskmanager?schema=public"
+
+      JWT_SECRET: "change-this-production-secret"
+      JWT_EXPIRES_IN: "7d"
+
+      REDIS_URL: "redis://redis:6379"
+
+      CLIENT_URL: "http://localhost:5500"
+
+      ENABLE_SWAGGER: "true"
+
+    depends_on:
+      - postgres
+      - redis
+
+    restart: unless-stopped
+
 
 volumes:
   postgres_data:

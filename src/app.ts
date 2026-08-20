@@ -8,24 +8,64 @@ import swaggerUi from 'swagger-ui-express';
 
 import authRoutes from './modules/auth/auth.routes';
 import taskRoutes from './modules/tasks/task.routes';
+
 import { swaggerSpec } from './config/swagger';
+import { env } from './config/env';
+
+import {
+  apiLimiter,
+  authLimiter,
+} from './middleware/rateLimit.middleware';
+
+import { errorMiddleware } from './middleware/error.middleware';
 
 const app = express();
 
 app.use(helmet());
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
+
+app.use(
+  cors({
+    origin: env.CLIENT_URL,
+    credentials: true,
+  })
+);
+
+app.use(
+  express.json({
+    limit: '100kb',
+  })
+);
+
+app.use(
+  express.urlencoded({
+    extended: true,
+    limit: '100kb',
+  })
+);
+
+
+
+if (env.NODE_ENV === 'production') {
+  app.use(morgan('combined'));
+} else {
+  app.use(morgan('dev'));
+}
+
+if (env.NODE_ENV !== 'test') {
+  app.use('/api', apiLimiter);
+  app.use('/api/auth', authLimiter);
+}
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes);
 
-app.use(
-  '/api-docs',
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec)
-);
+if (env.ENABLE_SWAGGER) {
+  app.use(
+    '/api-docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec)
+  );
+}
 
 app.get('/health', (_req, res) => {
   res.json({
@@ -34,12 +74,6 @@ app.get('/health', (_req, res) => {
   });
 });
 
-app.use((err: any, _req: any, res: any, _next: any) => {
-  console.error(err.stack);
-
-  res.status(500).json({
-    error: 'Something went wrong!',
-  });
-});
+app.use(errorMiddleware);
 
 export default app;

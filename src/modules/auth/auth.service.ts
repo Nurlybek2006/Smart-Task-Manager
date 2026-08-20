@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../../database/prisma';
+import { AppError } from '../../utils/AppError';
+import { env } from '../../config/env';
 
 
 export class AuthService {
@@ -8,7 +10,10 @@ export class AuthService {
     // 1. Email бар ма?
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      throw new Error('User already exists');
+      throw new AppError(
+        'User already exists',
+        409
+      );
     }
 
     // 2. Құпия сөзді хэштеу
@@ -40,7 +45,10 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error('Invalid email or password');
+      throw new AppError(
+        'Invalid email or password',
+        401
+      );
     }
 
     // 2. Парольді тексеру
@@ -60,7 +68,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
       },
-      process.env.JWT_SECRET!,
+      env.JWT_SECRET,
       {
         expiresIn: '7d',
       }
