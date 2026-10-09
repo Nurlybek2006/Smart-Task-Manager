@@ -140,15 +140,15 @@ export class TaskController {
       const result = await taskService.getTasks(
         req.user.userId,
         parsedStatus as
-          | 'TODO'
-          | 'IN_PROGRESS'
-          | 'REVIEW'
-          | 'DONE'
-          | undefined,
+        | 'TODO'
+        | 'IN_PROGRESS'
+        | 'REVIEW'
+        | 'DONE'
+        | undefined,
         parsedDueDate as
-          | 'today'
-          | 'overdue'
-          | undefined,
+        | 'today'
+        | 'overdue'
+        | undefined,
         parsedPage,
         parsedLimit
       );
